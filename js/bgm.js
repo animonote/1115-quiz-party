@@ -5,6 +5,7 @@
    ・START を押した瞬間に通常BGMを再生
    ・最終問題に入った瞬間、最終問題用BGMへクロスフェード
    ・RETRY / もう一度あそぶ で通常BGMに戻す
+     （通常BGMが流れている間のゲームオーバーなら、止めずにそのまま流す）
    ・ミュートボタンで消音／解除
    iPhone は audio の volume を変更できないため、
    音量は Web Audio API（GainNode）で制御します。
@@ -98,10 +99,17 @@
   /* ---------- クイズの進行に合わせて切り替え ---------- */
   document.addEventListener("quiz:start", () => {
     ensureContext();
-    // 通常BGMを頭から（最終BGMが鳴っていたら短くフェードアウト）
-    tracks.normal.mix = 0;
-    tracks.normal.audio.currentTime = 0;
-    fadeTo("normal", current ? RESET_FADE_MS : 0, true);
+    if (current === "normal" && !tracks.normal.audio.paused) {
+      // 通常BGMが鳴っている（1〜4問目でゲームオーバー）→ 止めずにそのまま流す
+    } else if (current === "final") {
+      // 最終BGMが鳴っている（最終問題でゲームオーバー／全問正解後）→ 通常BGMを頭から、短くクロスフェード
+      tracks.normal.mix = 0;
+      fadeTo("normal", RESET_FADE_MS, true);
+    } else {
+      // 初回の START → 通常BGMを頭から
+      tracks.normal.mix = 0;
+      fadeTo("normal", 0, true);
+    }
     // 最終問題で遅れないよう、最終BGMをこの時点で読み込み開始
     if (tracks.final.audio.preload !== "auto") {
       tracks.final.audio.preload = "auto";
