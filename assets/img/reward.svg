@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900">
+  <!-- 仮の限定画像：差し替えてください（幅1200px前後・1MB以下・縦横比自由） -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe3e4"/>
+      <stop offset="1" stop-color="#ffc93c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#g)"/>
+  <g fill="#e8383d" opacity=".25">
+    <circle cx="150" cy="150" r="60"/><circle cx="1050" cy="180" r="80"/>
+    <circle cx="200" cy="760" r="90"/><circle cx="1000" cy="740" r="60"/>
+  </g>
+  <text x="600" y="420" text-anchor="middle" font-family="sans-serif" font-size="110" font-weight="bold" fill="#e8383d">SPECIAL</text>
+  <text x="600" y="530" text-anchor="middle" font-family="sans-serif" font-size="48" fill="#b8262b">限定画像（仮）1200 × 900</text>
+</svg>

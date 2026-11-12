@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e8383d">
+  <title>記念日クイズ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 背景の水玉（飾り） -->
+  <div class="bg-dots" aria-hidden="true"></div>
+
+  <div class="app">
+    <!-- ===== ヘッダー（ミュートボタン） ===== -->
+    <header class="topbar">
+      <button type="button" class="mute-btn" id="muteBtn" aria-pressed="false" aria-label="BGMをミュート">
+        <span class="mute-btn__icon" aria-hidden="true">♪</span>
+        <span class="mute-btn__label">BGM ON</span>
+      </button>
+    </header>
+
+    <main class="screens">
+
+      <!-- ===== 1. タイトル画面 ===== -->
+      <section class="screen screen--title is-active" id="screenTitle" aria-labelledby="titleHeading">
+        <!-- ロゴ：画像のパスは config.js の images.logo -->
+        <img class="logo" id="logoImg" alt="ロゴ" width="1920" height="1153">
+
+        <h1 class="title visually-hidden" id="titleHeading">記念日クイズ</h1>
+        <p class="subtitle" id="subtitle"></p>
+
+        <!-- 朱雀イラスト：画像のパスは config.js の images.mascot -->
+        <img class="mascot" id="mascotImg" alt="" width="2894" height="4093">
+
+        <div class="start-area">
+          <button type="button" class="btn btn--primary btn--big" id="startBtn">START</button>
+          <p class="notice" id="bgmNotice">
+            <span class="notice__icon" aria-hidden="true">🔊</span>
+            <span id="bgmNoticeText">BGMが流れます。音量にご注意ください</span>
+          </p>
+        </div>
+
+        <p class="rule" id="ruleText">全5問・1問でも間違えたらゲームオーバー！</p>
+      </section>
+
+      <!-- ===== 2. クイズ画面 ===== -->
+      <section class="screen screen--quiz" id="screenQuiz" hidden aria-live="polite">
+        <div class="progress">
+          <span class="progress__label">
+            Q<span id="qNumber">1</span><small> / <span id="qTotal">5</span></small>
+          </span>
+          <div class="progress__bar"><div class="progress__fill" id="progressFill" style="width:20%"></div></div>
+        </div>
+
+        <p class="final-badge" id="finalBadge" hidden>★ FINAL QUESTION ★</p>
+
+        <div class="question-card">
+          <p class="question" id="questionText"></p>
+        </div>
+
+        <!-- 選択肢は JS で作成 -->
+        <ul class="choices" id="choices"></ul>
+      </section>
+
+      <!-- ===== 3. ゲームオーバー画面 ===== -->
+      <section class="screen screen--over" id="screenOver" hidden>
+        <!-- イラスト：画像のパスは config.js の images.gameover -->
+        <img class="result-img" id="gameoverImg" alt="" width="2894" height="1314">
+        <h2 class="result-title" id="overTitle">GAME OVER</h2>
+        <p class="result-text" id="overText">ざんねん！もう一度チャレンジしてね</p>
+        <p class="answer-reveal" id="answerReveal">正解は「<strong id="answerText"></strong>」でした</p>
+        <button type="button" class="btn btn--primary btn--big" id="retryBtn">RETRY</button>
+      </section>
+
+      <!-- ===== 4. 全問正解画面 ===== -->
+      <section class="screen screen--clear" id="screenClear" hidden>
+        <p class="result-icon" aria-hidden="true">🎉</p>
+        <h2 class="result-title result-title--clear" id="clearTitle">PERFECT!</h2>
+        <p class="result-text" id="clearText"></p>
+        <figure class="reward">
+          <!-- 限定画像：全問正解時にJSで src を設定する（それまで読み込まない） -->
+          <img class="reward__img" id="rewardImg" alt="限定画像">
+          <figcaption class="reward__caption" id="rewardCaption"></figcaption>
+        </figure>
+        <button type="button" class="btn btn--ghost" id="againBtn">もう一度あそぶ</button>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <small id="footerText">© Anniversary Quiz</small>
+    </footer>
+  </div>
+
+  <!-- 設定（問題・文言など）→ BGM → 本体 の順に読み込む -->
+  <!-- ブラウザに古いファイルが残っていても、毎回最新の config.js などを読むようにする -->
+  <script>
+    (function () {
+      var v = Date.now();
+      ["config.js", "js/bgm.js", "js/app.js"].forEach(function (src) {
+        var s = document.createElement("script");
+        s.src = src + "?v=" + v;
+        s.async = false; // 書いた順番どおりに実行
+        document.body.appendChild(s);
+      });
+    })();
+  </script>
+</body>
+</html>

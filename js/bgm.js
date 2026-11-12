@@ -1,0 +1,138 @@
+/* =========================================================
+   記念日クイズ  BGM
+   曲・音量・クロスフェードの長さは config.js の bgm で変更できます。
+   ---------------------------------------------------------
+   ・START を押した瞬間に通常BGMを再生
+   ・最終問題に入った瞬間、最終問題用BGMへクロスフェード
+   ・RETRY / もう一度あそぶ で通常BGMに戻す
+   ・ミュートボタンで消音／解除
+   iPhone は audio の volume を変更できないため、
+   音量は Web Audio API（GainNode）で制御します。
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const CFG = window.QUIZ_CONFIG.bgm;
+  const volume = Math.min(1, Math.max(0, Number(CFG.volume) || 0));
+  const fadeMs = Math.max(0, Number(CFG.crossfadeSeconds) || 0) * 1000;
+  const RESET_FADE_MS = 400; // リトライ時の短いフェード
+
+  // ローカルのファイルを直接開いた場合（file://）は Web Audio が無音になるブラウザがあるため使わない
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const useWebAudio = !!AC && location.protocol !== "file:";
+  let ctx = null;
+
+  function makeTrack(src) {
+    const audio = new Audio();
+    audio.src = encodeURI(src); // ファイル名の空白などに対応
+    audio.loop = CFG.loop !== false;
+    audio.preload = "none"; // ページを開いただけでは読み込まない（通信量の節約）
+    return { audio, gain: null, mix: 0 };
+  }
+
+  const tracks = { normal: makeTrack(CFG.normal), final: makeTrack(CFG.final) };
+  let current = null;   // 今メインで鳴っている曲（"normal" / "final"）
+  let muted = false;
+  let fadeTimer = null;
+
+  /* ---------- 音量の反映 ---------- */
+  function apply(track) {
+    const v = muted ? 0 : track.mix * volume;
+    if (track.gain) track.gain.gain.value = v;
+    else track.audio.volume = v;
+  }
+  function applyAll() { apply(tracks.normal); apply(tracks.final); }
+
+  /* ---------- 初回の START で Web Audio を準備（ユーザー操作の中で行う必要がある） ---------- */
+  function ensureContext() {
+    if (!useWebAudio) return;
+    if (!ctx) {
+      try {
+        ctx = new AC();
+        Object.values(tracks).forEach((t) => {
+          const node = ctx.createMediaElementSource(t.audio);
+          t.gain = ctx.createGain();
+          node.connect(t.gain).connect(ctx.destination);
+          t.audio.volume = 1;
+        });
+      } catch (e) {
+        console.warn("Web Audio が使えないため通常の再生にします", e);
+        ctx = null;
+        Object.values(tracks).forEach((t) => { t.gain = null; });
+      }
+    }
+    if (ctx && ctx.state === "suspended") ctx.resume();
+  }
+
+  function play(track) {
+    const p = track.audio.play();
+    if (p && p.catch) p.catch((e) => console.warn("BGMを再生できませんでした", e));
+  }
+
+  /* ---------- フェード（時間で計算するので、裏に回っても最後まで進む） ---------- */
+  function fadeTo(name, ms, restart) {
+    const next = tracks[name];
+    const others = Object.values(tracks).filter((t) => t !== next);
+    clearInterval(fadeTimer);
+
+    if (restart) next.audio.currentTime = 0;
+    if (next.audio.paused) { if (!restart) next.mix = 0; play(next); }
+    current = name;
+
+    const from = new Map([[next, next.mix], ...others.map((t) => [t, t.mix])]);
+    const start = performance.now();
+    const step = () => {
+      const k = ms > 0 ? Math.min(1, (performance.now() - start) / ms) : 1;
+      next.mix = from.get(next) + (1 - from.get(next)) * k;
+      others.forEach((t) => { t.mix = from.get(t) * (1 - k); });
+      applyAll();
+      if (k >= 1) {
+        clearInterval(fadeTimer);
+        others.forEach((t) => { t.audio.pause(); });
+      }
+    };
+    step();
+    if (ms > 0) fadeTimer = setInterval(step, 30);
+  }
+
+  /* ---------- クイズの進行に合わせて切り替え ---------- */
+  document.addEventListener("quiz:start", () => {
+    ensureContext();
+    // 通常BGMを頭から（最終BGMが鳴っていたら短くフェードアウト）
+    tracks.normal.mix = 0;
+    tracks.normal.audio.currentTime = 0;
+    fadeTo("normal", current ? RESET_FADE_MS : 0, true);
+    // 最終問題で遅れないよう、最終BGMをこの時点で読み込み開始
+    if (tracks.final.audio.preload !== "auto") {
+      tracks.final.audio.preload = "auto";
+      tracks.final.audio.load();
+    }
+  });
+
+  function toFinal() {
+    if (current === "final") return;
+    tracks.final.mix = 0;
+    fadeTo("final", fadeMs, true);
+  }
+  // 最終問題の少し前（config.js の finalEarlySeconds）に切り替え開始
+  document.addEventListener("quiz:final-soon", toFinal);
+  // 念のため、最終問題が出た時点でまだなら切り替え（出題数1問のときなど）
+  document.addEventListener("quiz:question", (e) => { if (e.detail.isFinal) toFinal(); });
+
+  /* ---------- ミュートボタン ---------- */
+  const muteBtn = document.getElementById("muteBtn");
+  const muteLabel = muteBtn.querySelector(".mute-btn__label");
+  const muteIcon = muteBtn.querySelector(".mute-btn__icon");
+  muteBtn.addEventListener("click", () => {
+    muted = !muted;
+    muteBtn.setAttribute("aria-pressed", String(muted));
+    muteBtn.setAttribute("aria-label", muted ? "BGMのミュートを解除" : "BGMをミュート");
+    muteLabel.textContent = muted ? "BGM OFF" : "BGM ON";
+    muteIcon.textContent = muted ? "×" : "♪";
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    applyAll();
+  });
+
+  // テスト用（ブラウザのコンソールから状態を確認できる）
+  window.__bgm = { tracks, get current() { return current; }, get muted() { return muted; }, get webAudio() { return !!ctx; } };
+})();

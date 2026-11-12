@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- 仮イラスト（朱雀）：差し替えてください -->
+  <circle cx="200" cy="200" r="190" fill="#ffe3e4"/>
+  <path d="M200 90 C260 130 300 200 250 290 L200 260 L150 290 C100 200 140 130 200 90Z" fill="#e8383d"/>
+  <path d="M120 200 C60 180 40 240 70 280 C100 260 120 240 150 240Z" fill="#ffc93c"/>
+  <path d="M280 200 C340 180 360 240 330 280 C300 260 280 240 250 240Z" fill="#ffc93c"/>
+  <circle cx="180" cy="170" r="10" fill="#3a2a2c"/>
+  <circle cx="220" cy="170" r="10" fill="#3a2a2c"/>
+  <path d="M190 195 L210 195 L200 212Z" fill="#ffc93c"/>
+  <text x="200" y="360" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#b8262b">朱雀イラスト（仮）</text>
+</svg>
