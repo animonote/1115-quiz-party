@@ -188,7 +188,18 @@
   function startSlideshow() {
     stopSlideshow();
     const run = slideRun;
-    const patterns = (CFG.rewardPatterns || []).filter((p) => Array.isArray(p) && p.length);
+    // 公開日時（from）が来ているパターンだけを候補にする
+    const now = Date.now();
+    const patterns = (CFG.rewardPatterns || []).map((p) => {
+      if (Array.isArray(p)) return p;
+      if (!p || !Array.isArray(p.images)) return null;
+      if (p.from) {
+        const start = new Date(p.from).getTime();
+        if (isNaN(start)) { console.warn("rewardPatterns の from の日時が読めません", p.from); return null; }
+        if (now < start) return null;
+      }
+      return p.images;
+    }).filter((p) => Array.isArray(p) && p.length);
     if (!patterns.length) return;
     const pattern = patterns[Math.floor(Math.random() * patterns.length)]; // パターンをランダムに選ぶ
     const interval = Math.max(0, Number(CFG.rewardIntervalSeconds) || 0) * 1000;
