@@ -22,7 +22,7 @@
     questionText: $("questionText"),
     choices: $("choices"),
     answerReveal: $("answerReveal"),
-    rewardImg: $("rewardImg"),
+    rewardFrame: $("rewardFrame"),
   };
 
   /* ---------- 設定の読み込み・チェック ---------- */
@@ -56,7 +56,8 @@
     set("footerText", t.footer);
     $("logoImg").src = encodeURI(CFG.images.logo);     // フォルダ名の空白などに対応
     $("mascotImg").src = encodeURI(CFG.images.mascot);
-    $("gameoverImg").src = encodeURI(CFG.images.gameover); // 先に読み込んでおき、ゲームオーバー時にすぐ出す
+    // ゲームオーバーのイラストは先に全部読み込んでおき、ゲームオーバー時にすぐ出す
+    [].concat(CFG.images.gameover || []).forEach((src) => { new Image().src = encodeURI(src); });
     el.qTotal.textContent = total;
   }
 
@@ -81,6 +82,7 @@
   let locked = false; // 回答後の連打防止
 
   function startGame() {
+    stopSlideshow();
     deck = shuffle(pool).slice(0, total);   // 重複なしでランダムに選ぶ
     index = 0;
     document.dispatchEvent(new CustomEvent("quiz:start")); // BGM開始（ボタンを押した瞬間に鳴らす）
@@ -133,6 +135,7 @@
     const isCorrect = btn === correctBtn;
 
     buttons.forEach((b) => { b.disabled = true; });
+    document.dispatchEvent(new CustomEvent("quiz:answer", { detail: { correct: isCorrect, isFinal: index === total - 1, button: btn } })); // 効果音・エフェクト
 
     // 次が最終問題なら、表示より少し前に最終BGMへの切り替えを始める
     if (isCorrect && index + 1 === total - 1) {
@@ -152,22 +155,81 @@
         index++;
         renderQuestion();
       }
-    }, CFG.answerDelay);
+    }, isCorrect ? CFG.answerDelay : (CFG.wrongDelay != null ? CFG.wrongDelay : CFG.answerDelay));
   }
 
   function gameOver(correctText) {
+    const overs = [].concat(CFG.images.gameover || []).filter(Boolean);
+    if (overs.length) $("gameoverImg").src = encodeURI(overs[Math.floor(Math.random() * overs.length)]);
     $("answerText").textContent = correctText;
     showScreen(el.over);
     document.dispatchEvent(new CustomEvent("quiz:over"));
   }
 
+  /* ---------- 限定画像のスライド（1→2→3 と切り替えて最後で止まる） ---------- */
+  let slideRun = 0; // 新しいスライドを始めるたびに増やし、古いものを止める
+
+  function stopSlideshow() {
+    slideRun++;
+    el.rewardFrame.innerHTML = "";
+    el.rewardFrame.classList.remove("is-loading");
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.className = "reward__img";
+      img.alt = "";
+      img.onload = img.onerror = () => resolve(img);
+      img.src = encodeURI(src);
+    });
+  }
+
+  function startSlideshow() {
+    stopSlideshow();
+    const run = slideRun;
+    const patterns = (CFG.rewardPatterns || []).filter((p) => Array.isArray(p) && p.length);
+    if (!patterns.length) return;
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)]; // パターンをランダムに選ぶ
+    const interval = Math.max(0, Number(CFG.rewardIntervalSeconds) || 0) * 1000;
+
+    // 全問正解した今、初めてそのパターンの画像を読み込む
+    const loads = pattern.map(loadImage);
+    el.rewardFrame.classList.add("is-loading");
+
+    (async () => {
+      for (let i = 0; i < loads.length; i++) {
+        const started = performance.now();
+        const img = await loads[i];
+        if (run !== slideRun) return;                 // リトライなどで画面を離れた
+        if (i > 0) {
+          // 前の画像を出してから interval 秒たつまで待つ（読み込みが遅かった分は差し引く）
+          const wait = interval - (performance.now() - started);
+          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+          if (run !== slideRun) return;
+        }
+        const prev = el.rewardFrame.querySelector(".reward__img.is-shown");
+        if (!prev) img.classList.add("no-anim");       // 1枚目はスライドせずに表示
+        el.rewardFrame.appendChild(img);
+        el.rewardFrame.classList.remove("is-loading");
+        void img.offsetWidth;                          // 右の外にいる状態を確定させてからスライド開始
+        if (prev) { prev.classList.remove("is-shown"); prev.classList.add("is-out"); }
+        img.classList.add("is-shown");                 // 右から横にスライドして入る
+        if (!prev) { void img.offsetWidth; img.classList.remove("no-anim"); } // 次に出ていくときはスライドさせる
+      }
+    })();
+  }
+
   function gameClear() {
-    // 全問正解したときに初めて画像を読み込む
     // ひとことをランダムで表示（1つだけ書いた場合はそれを表示）
     const msgs = [].concat(CFG.texts.clearText || []).filter(Boolean);
     $("clearText").textContent = msgs.length ? msgs[Math.floor(Math.random() * msgs.length)] : "";
 
-    if (!el.rewardImg.getAttribute("src")) el.rewardImg.src = encodeURI(CFG.images.reward);
+    // 「PERFECT!」の上のイラストをランダムで1つ
+    const perfects = [].concat(CFG.images.perfect || []).filter(Boolean);
+    if (perfects.length) $("perfectImg").src = encodeURI(perfects[Math.floor(Math.random() * perfects.length)]);
+
+    startSlideshow();
     showScreen(el.clear);
     document.dispatchEvent(new CustomEvent("quiz:clear"));
   }

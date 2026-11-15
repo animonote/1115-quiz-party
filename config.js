@@ -39,7 +39,7 @@ window.QUIZ_CONFIG = {
       "よっ！うずめ&キュリオマスター！",
       "クイズ王におれはなる！",
     ],
-    rewardCaption: "エピソードスケッチは全6種\n期間中随時更新されるよ\n何度もクイズで遊んでめざせ！コンプリート！",   // \n で改行
+    rewardCaption: "限定画像は期間中随時更新！\nエピソードスケッチ6種＋撮りおろしフォト2種\n何度もクイズで遊んでめざせ！コンプリート！",   // \n で改行
     againButton: "もう一度あそぶ",
     footer: "© Anniversary Quiz",
   },
@@ -48,9 +48,33 @@ window.QUIZ_CONFIG = {
   images: {
     logo: "TOP illust/logo.png",       // ロゴ
     mascot: "TOP illust/TOP.png",      // 朱雀イラスト
-    gameover: "TOP illust/gameover.png", // ゲームオーバー画面のイラスト
-    reward: "assets/img/reward.svg",   // 限定画像（全問正解まで読み込みません）
+    gameover: [                          // ゲームオーバー画面のイラスト（この中からランダムで1つ）
+      "TOP illust/gameover.png",
+      "TOP illust/gameover2.png",
+    ],
+    perfect: [                           // 全問正解画面のイラスト（この中からランダムで1つ）
+      "TOP illust/perfect1.png",
+      "TOP illust/perfect2.png",
+    ],
   },
+
+  /* ---------- 限定画像（全問正解まで読み込みません） ----------
+     ・パターンの中から1つをランダムで選び、1枚目→2枚目→3枚目…の順に切り替えて、最後の画像で止まります
+     ・パターンを増やすときは [ ... ], のかたまりをコピーして追加してください
+     ・1パターンの枚数は自由です（1枚だけなら切り替えなし） */
+  rewardPatterns: [
+    [ // パターン1：記念撮影
+      "Limited images/記念撮影1.jpg",
+      "Limited images/記念撮影2.jpg",
+      "Limited images/記念撮影3.jpg",
+    ],
+    [ // パターン2：寝坊
+      "Limited images/寝坊1.jpg",
+      "Limited images/寝坊2.jpg",
+      "Limited images/寝坊3.jpg",
+    ],
+  ],
+  rewardIntervalSeconds: 4,    // 次の画像に切り替わるまでの秒数
 
   /* ---------- BGM ---------- */
   bgm: {
@@ -62,8 +86,19 @@ window.QUIZ_CONFIG = {
     loop: true,                    // 曲の最後まで行ったら頭から繰り返す
   },
 
+  /* ---------- 効果音（SE） ----------
+     使わない効果音は "" にすると鳴らなくなります */
+  se: {
+    start: "BGM/可愛く輝く1.mp3",    // STARTを押したとき
+    correct: "BGM/ひらめく2.mp3",    // 正解したとき
+    wrong: "BGM/しょげる.mp3",       // 不正解のとき
+    clear: "BGM/歓声と拍手1.mp3",    // 最後の問題を正解したとき
+    volume: 0.8,                     // 効果音の音量（0 = 無音 〜 1 = 最大）
+  },
+
   /* ---------- 正解・不正解の表示時間（ミリ秒。1000 = 1秒） ---------- */
-  answerDelay: 1000,
+  answerDelay: 1000,   // 正解したあと、次の問題に進むまで
+  wrongDelay: 500,  // 不正解のあと、GAME OVER 画面に切り替わるまで
 
   /* ---------- 問題 ----------
      ・q       … 問題文

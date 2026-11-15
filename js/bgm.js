@@ -6,7 +6,8 @@
    ・最終問題に入った瞬間、最終問題用BGMへクロスフェード
    ・RETRY / もう一度あそぶ で通常BGMに戻す
      （通常BGMが流れている間のゲームオーバーなら、止めずにそのまま流す）
-   ・ミュートボタンで消音／解除
+   ・ミュートボタンで消音／解除（効果音も一緒に消音）
+   ・効果音：START／正解／不正解／最後の問題を正解（config.js の se）
    iPhone は audio の volume を変更できないため、
    音量は Web Audio API（GainNode）で制御します。
    ========================================================= */
@@ -32,6 +33,18 @@
   }
 
   const tracks = { normal: makeTrack(CFG.normal), final: makeTrack(CFG.final) };
+
+  /* ---------- 効果音（小さいファイルなので、すぐ鳴らせるようページを開いた時点で読み込む） ---------- */
+  const SE_CFG = window.QUIZ_CONFIG.se || {};
+  const seVolume = Math.min(1, Math.max(0, Number(SE_CFG.volume) || 0));
+  const se = {};
+  ["start", "correct", "wrong", "clear"].forEach((key) => {
+    if (!SE_CFG[key]) return;
+    const audio = new Audio();
+    audio.src = encodeURI(SE_CFG[key]);
+    audio.preload = "auto";
+    se[key] = { audio, gain: null };
+  });
   let current = null;   // 今メインで鳴っている曲（"normal" / "final"）
   let muted = false;
   let fadeTimer = null;
@@ -42,7 +55,24 @@
     if (track.gain) track.gain.gain.value = v;
     else track.audio.volume = v;
   }
-  function applyAll() { apply(tracks.normal); apply(tracks.final); }
+  function applySe(s) {
+    const v = muted ? 0 : seVolume;
+    if (s.gain) s.gain.gain.value = v;
+    else s.audio.volume = v;
+  }
+  function applyAll() {
+    apply(tracks.normal); apply(tracks.final);
+    Object.values(se).forEach(applySe);
+  }
+
+  function playSe(key) {
+    const s = se[key];
+    if (!s) return;
+    applySe(s);
+    s.audio.currentTime = 0;
+    const p = s.audio.play();
+    if (p && p.catch) p.catch((e) => console.warn("効果音を再生できませんでした", key, e));
+  }
 
   /* ---------- 初回の START で Web Audio を準備（ユーザー操作の中で行う必要がある） ---------- */
   function ensureContext() {
@@ -50,7 +80,7 @@
     if (!ctx) {
       try {
         ctx = new AC();
-        Object.values(tracks).forEach((t) => {
+        [...Object.values(tracks), ...Object.values(se)].forEach((t) => {
           const node = ctx.createMediaElementSource(t.audio);
           t.gain = ctx.createGain();
           node.connect(t.gain).connect(ctx.destination);
@@ -59,8 +89,9 @@
       } catch (e) {
         console.warn("Web Audio が使えないため通常の再生にします", e);
         ctx = null;
-        Object.values(tracks).forEach((t) => { t.gain = null; });
+        [...Object.values(tracks), ...Object.values(se)].forEach((t) => { t.gain = null; });
       }
+      applyAll();
     }
     if (ctx && ctx.state === "suspended") ctx.resume();
   }
@@ -99,6 +130,7 @@
   /* ---------- クイズの進行に合わせて切り替え ---------- */
   document.addEventListener("quiz:start", () => {
     ensureContext();
+    playSe("start");
     if (current === "normal" && !tracks.normal.audio.paused) {
       // 通常BGMが鳴っている（1〜4問目でゲームオーバー）→ 止めずにそのまま流す
     } else if (current === "final") {
@@ -127,7 +159,13 @@
   // 念のため、最終問題が出た時点でまだなら切り替え（出題数1問のときなど）
   document.addEventListener("quiz:question", (e) => { if (e.detail.isFinal) toFinal(); });
 
-  /* ---------- ミュートボタン ---------- */
+  // 回答したとき：正解／不正解／最後の問題を正解 の効果音
+  document.addEventListener("quiz:answer", (e) => {
+    const { correct, isFinal } = e.detail;
+    playSe(!correct ? "wrong" : isFinal ? "clear" : "correct");
+  });
+
+  /* ---------- ミュートボタン（BGMと効果音の両方を消音） ---------- */
   const muteBtn = document.getElementById("muteBtn");
   const muteLabel = muteBtn.querySelector(".mute-btn__label");
   const muteIcon = muteBtn.querySelector(".mute-btn__icon");
@@ -142,5 +180,5 @@
   });
 
   // テスト用（ブラウザのコンソールから状態を確認できる）
-  window.__bgm = { tracks, get current() { return current; }, get muted() { return muted; }, get webAudio() { return !!ctx; } };
+  window.__bgm = { tracks, se, get current() { return current; }, get muted() { return muted; }, get webAudio() { return !!ctx; } };
 })();

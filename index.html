@@ -68,8 +68,8 @@
 
       <!-- ===== 3. ゲームオーバー画面 ===== -->
       <section class="screen screen--over" id="screenOver" hidden>
-        <!-- イラスト：画像のパスは config.js の images.gameover -->
-        <img class="result-img" id="gameoverImg" alt="" width="2894" height="1314">
+        <!-- イラスト：config.js の images.gameover からランダムで1つ -->
+        <img class="result-img result-img--over" id="gameoverImg" alt="">
         <h2 class="result-title" id="overTitle">GAME OVER</h2>
         <p class="result-text" id="overText">ざんねん！もう一度チャレンジしてね</p>
         <p class="answer-reveal" id="answerReveal">正解は「<strong id="answerText"></strong>」でした</p>
@@ -78,12 +78,13 @@
 
       <!-- ===== 4. 全問正解画面 ===== -->
       <section class="screen screen--clear" id="screenClear" hidden>
-        <p class="result-icon" aria-hidden="true">🎉</p>
+        <!-- イラスト：config.js の images.perfect からランダムで1つ（全問正解時に読み込む） -->
+        <img class="result-img result-img--perfect" id="perfectImg" alt="" width="480" height="480">
         <h2 class="result-title result-title--clear" id="clearTitle">PERFECT!</h2>
         <p class="result-text" id="clearText"></p>
         <figure class="reward">
-          <!-- 限定画像：全問正解時にJSで src を設定する（それまで読み込まない） -->
-          <img class="reward__img" id="rewardImg" alt="限定画像">
+          <!-- 限定画像：全問正解時にJSで画像を入れる（それまで読み込まない）。画像は config.js の rewardPatterns -->
+          <div class="reward__frame" id="rewardFrame" role="img" aria-label="限定画像"></div>
           <figcaption class="reward__caption" id="rewardCaption"></figcaption>
         </figure>
         <button type="button" class="btn btn--ghost" id="againBtn">もう一度あそぶ</button>
@@ -101,7 +102,7 @@
   <script>
     (function () {
       var v = Date.now();
-      ["config.js", "js/bgm.js", "js/app.js"].forEach(function (src) {
+      ["config.js", "js/bgm.js", "js/effects.js", "js/app.js"].forEach(function (src) {
         var s = document.createElement("script");
         s.src = src + "?v=" + v;
         s.async = false; // 書いた順番どおりに実行

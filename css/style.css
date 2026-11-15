@@ -39,6 +39,16 @@
   /* --- レイアウト --- */
   --content-max: 480px;            /* PCで見たときの最大幅（スマホ幅を基本） */
   --gutter: 16px;                  /* 画面の左右余白 */
+
+  /* --- エフェクト --- */
+  --fx-sparkle-1: #ffc93c;         /* キラキラの色（黄） */
+  --fx-sparkle-2: #ff7fa8;         /* キラキラの色（ピンク） */
+  --fx-sparkle-3: #ffffff;         /* キラキラの色（白） */
+  --fx-dim-color: rgba(30, 15, 25, .38); /* 不正解のときの暗さ（最後の数字が大きいほど暗い） */
+  --fx-dim-duration: .5s;          /* 暗くなる速さ */
+
+  /* --- 限定画像 --- */
+  --slide-duration: .5s;           /* 横スライドで切り替わる速さ */
 }
 
 /* ---------- リセット ---------- */
@@ -363,6 +373,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   height: auto;
   margin-bottom: -4px;
 }
+.result-img--perfect { width: min(45%, 170px); }
+/* ゲームオーバーのイラスト：横長・正方形どちらでも同じ高さで表示 */
+.result-img--over {
+  width: auto;
+  max-width: 90%;
+  height: 150px;
+  object-fit: contain;
+}
+/* ゲームオーバー画面：「GAME OVER」と文章の間を詰める（数字を大きくするともっと詰まる） */
+.screen--over .result-title { line-height: 1.1; }
+.screen--over .result-title + .result-text { margin-top: -12px; }
+.result-img:not([src]) { visibility: hidden; }
 .result-title {
   margin: 0;
   font-size: clamp(2.2rem, 11vw, 3rem);
@@ -371,7 +393,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: var(--color-primary);
   text-shadow: 3px 3px 0 var(--color-primary-light);
 }
-.result-title--clear { color: var(--color-primary); }
+.result-title--clear { color: var(--color-primary); line-height: 1.1; }
+/* 全問正解画面：「PERFECT!」とひとことの間を詰める（数字を大きくするともっと詰まる） */
+.screen--clear .result-title--clear + .result-text { margin-top: -12px; }
 .result-text { margin: 0; font-weight: 700; }
 .answer-reveal {
   margin: 0;
@@ -385,15 +409,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
   width: 100%;
   margin: 0;
 }
-.reward__img {
-  width: 100%;          /* 幅に合わせて自動で縮む（縦横比はそのまま） */
-  height: auto;
+/* 画像を重ねて置き、順番に横へスライドして切り替える
+   （次の画像が右から入り、前の画像が左へ出ていく） */
+.reward__frame {
+  display: grid;
+  width: 100%;
+  overflow: hidden;
   border-radius: var(--radius-md);
   border: 4px solid var(--color-primary);
   box-shadow: var(--shadow-card);
   background: var(--color-primary-light);
 }
-.reward__img:not([src]) { aspect-ratio: 4 / 3; } /* 読み込み前の仮の枠 */
+.reward__frame:empty,
+.reward__frame.is-loading { aspect-ratio: 1 / 1; } /* 読み込み前の仮の枠 */
+.reward__img {
+  grid-area: 1 / 1;
+  width: 100%;          /* 幅に合わせて自動で縮む（縦横比はそのまま） */
+  height: auto;
+  visibility: hidden;
+  transform: translateX(100%);                     /* 出番前は右の外で待機 */
+  transition: transform var(--slide-duration, .5s) ease-in-out;
+}
+.reward__img.is-shown { visibility: visible; transform: none; }
+.reward__img.is-out   { visibility: visible; transform: translateX(-100%); } /* 左へ出ていく */
+.reward__img.no-anim  { transition: none; }       /* 1枚目は最初からその場に表示 */
 .reward__caption {
   margin-top: 12px;
   font-size: .85rem;
@@ -402,6 +441,55 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: var(--color-text-sub);
   white-space: pre-line;   /* config.js の \n で改行できる */
 }
+
+/* =========================================================
+   エフェクト（js/effects.js）
+   ========================================================= */
+/* 正解：キラキラ */
+.fx-sparkles {
+  position: fixed;
+  width: 0;
+  height: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.fx-sparkle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: var(--size, 18px);
+  line-height: 1;
+  transform: translate(-50%, -50%) scale(0);
+  animation: fx-sparkle .9s cubic-bezier(.15, .8, .3, 1) forwards;
+  text-shadow: 0 0 6px rgba(255, 255, 255, .9);
+}
+.fx-sparkle--c0 { color: var(--fx-sparkle-1); }
+.fx-sparkle--c1 { color: var(--fx-sparkle-2); }
+.fx-sparkle--c2 { color: var(--fx-sparkle-3); text-shadow: 0 0 6px var(--fx-sparkle-1), 0 0 2px var(--fx-sparkle-1); }
+@keyframes fx-sparkle {
+  0%   { transform: translate(-50%, -50%) scale(0) rotate(0); opacity: 1; }
+  30%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+/* 正解のボタンが一瞬光る */
+.choice.is-correct.is-glow { animation: fx-glow .6s ease-out; }
+@keyframes fx-glow {
+  0%   { box-shadow: 0 4px 0 #1f8a5d, 0 0 0 0 rgba(255, 201, 60, .9); transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { box-shadow: 0 4px 0 #1f8a5d, 0 0 0 18px rgba(255, 201, 60, 0); transform: scale(1); }
+}
+
+/* 不正解：うっすら暗く */
+.fx-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: var(--fx-dim-color);
+  opacity: 0;
+  transition: opacity var(--fx-dim-duration) ease;
+}
+.fx-dim.is-on { opacity: 1; }
 
 /* ---------- アニメーション ---------- */
 @keyframes pop-in {
