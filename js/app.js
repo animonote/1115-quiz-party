@@ -83,7 +83,14 @@
 
   function startGame() {
     stopSlideshow();
-    deck = shuffle(pool).slice(0, total);   // 重複なしでランダムに選ぶ
+    // 出題開始日時（from）が来ている問題だけを候補に、重複なしでランダムに選ぶ
+    const now = Date.now();
+    const open = pool.filter((item) => {
+      if (!item.from) return true;
+      const start = new Date(item.from).getTime();
+      return !isNaN(start) && now >= start;
+    });
+    deck = shuffle(open.length >= total ? open : pool).slice(0, total);
     index = 0;
     document.dispatchEvent(new CustomEvent("quiz:start")); // BGM開始（ボタンを押した瞬間に鳴らす）
     showScreen(el.quiz);
